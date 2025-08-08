@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Response, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -31,6 +31,16 @@ def mask_key(k: str) -> str:
     return k[:3] + "*" * (len(k)-7) + k[-4:]
 
 app = FastAPI(title="Autoparser API", version="0.6.0")
+
+@app.on_event("startup")
+def _startup():
+    # Инициализируем БД (для MVP)
+    try:
+        from packages.persistence.db import init_db
+        init_db()
+    except Exception:
+        # не роняем старт, логи можно добавить
+        pass
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS")
 if CORS_ORIGINS:
@@ -69,10 +79,20 @@ def post_config(body: ConfigRequest):
 
 # ---- PARSER RUNS ----
 @app.post("/parse/start")
-def start_parse(req: RunRequest):
-    init_db()
-    result = run_parser(req.region)
-    return result
+def start_parse(req: RunRequest, background: BackgroundTasks):
+    """
+    Унифицированный запуск:
+    - если LOCAL_SINGLEEXE=1 -> добавляем фоновую локальную задачу
+    - иначе runner сам отправит в Celery
+    """
+    local_mode = os.getenv("LOCAL_SINGLEEXE") == "1"
+    if local_mode:
+        background.add_task(run_parser, req.region)
+        return {"status": "queued", "mode": "local", "region": req.region}
+    else:
+        # даже в «не локальном» режиме вызываем одну и ту же функцию — внутри она отправит в Celery
+        run_id = run_parser(req.region)
+        return {"status": "queued", "mode": "celery", "region": req.region, "run_id": run_id}
 
 @app.get("/runs", response_model=List[dict])
 def list_runs():

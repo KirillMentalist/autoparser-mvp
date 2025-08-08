@@ -1,8 +1,7 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import BigInteger, Text, JSON, DateTime, Integer, Boolean, ForeignKey
 from datetime import datetime
-
-class Base(DeclarativeBase): pass
+from .db import Base
 
 class Measure(Base):
     __tablename__ = "measures"
