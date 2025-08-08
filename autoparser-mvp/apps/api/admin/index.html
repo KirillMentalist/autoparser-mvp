@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prompt Editor</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+    aside { border-right: 1px solid #eee; padding: 12px; overflow: auto; }
+    main { padding: 12px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 4px 0; }
+    button, select { padding: 6px 10px; }
+    textarea { width: 100%; height: 45vh; font-family: ui-monospace, monospace; font-size: 14px; }
+    pre { background: #f7f7f7; padding: 10px; overflow: auto; white-space: pre-wrap; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .muted { color: #666; font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 6px; border-radius: 999px; border: 1px solid #ddd; margin: 2px; font-size: 12px; }
+    .pill.missing { border-color: #e00; color: #e00; background: #fee; }
+    #vars.missing { border: 2px solid #e00; background: #fff7f7; }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>Промпты</h1>
+    <ul id="list"></ul>
+    <div class="muted">API: /prompts</div>
+  </aside>
+  <main>
+    <div class="row">
+      <select id="selector"></select>
+      <button id="loadBtn">Загрузить</button>
+      <button id="saveBtn">Сохранить</button>
+      <button id="varsBtn">Загрузить пример</button>
+      <button id="renderBtn">Превью</button>
+      <button id="forceBtn" title="Игнорировать недостающие">Force</button>
+    </div>
+
+    <div class="row">
+      <div class="muted">Обязательные переменные:</div>
+      <div id="required"></div>
+    </div>
+
+    <textarea id="editor" placeholder="Текст промпта (Markdown + Jinja2)"></textarea>
+    <div>
+      <div class="row">
+        <span class="muted">Переменные (JSON) — можно править перед превью:</span>
+      </div>
+      <textarea id="vars" style="height: 20vh;"></textarea>
+      <h3>Рендер:</h3>
+      <pre id="rendered"></pre>
+    </div>
+  </main>
+
+  <script>
+    const listEl = document.getElementById('list');
+    const selector = document.getElementById('selector');
+    const editor = document.getElementById('editor');
+    const varsEl = document.getElementById('vars');
+    const renderedEl = document.getElementById('rendered');
+    const requiredEl = document.getElementById('required');
+
+    async function refreshList() {
+      const names = await fetch('/prompts').then(r => r.json());
+      listEl.innerHTML = '';
+      selector.innerHTML = '';
+      names.forEach(n => {
+        const li = document.createElement('li');
+        li.textContent = n;
+        li.style.cursor = 'pointer';
+        li.onclick = () => { selector.value = n; loadPrompt(); loadVars(); };
+        listEl.appendChild(li);
+
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        selector.appendChild(opt);
+      });
+      if (names.length) { selector.value = names[0]; }
+    }
+
+    async function loadPrompt() {
+      const name = selector.value;
+      const res = await fetch(`/prompts/${encodeURIComponent(name)}`).then(r => r.json());
+      editor.value = res.content || '';
+    }
+
+    async function savePrompt() {
+      const name = selector.value;
+      await fetch(`/prompts/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({content: editor.value})
+      });
+      alert('Сохранено');
+    }
+
+    function pill(text, missing=false) {
+      const span = document.createElement('span');
+      span.className = 'pill' + (missing ? ' missing' : '');
+      span.textContent = text;
+      return span;
+    }
+
+    async function loadVars() {
+      const name = selector.value;
+      const res = await fetch(`/prompts/${encodeURIComponent(name)}/vars`).then(r => r.json());
+      varsEl.value = JSON.stringify(res.vars || {}, null, 2);
+      // Render required pills
+      requiredEl.innerHTML = '';
+      (res.required || []).forEach(k => requiredEl.appendChild(pill(k)));
+      // Remove missing style
+      varsEl.classList.remove('missing');
+    }
+
+    async function renderPrompt(force=false) {
+      const name = selector.value;
+      let variables = {};
+      try { variables = JSON.parse(varsEl.value || '{}'); } catch(e) { alert('Неверный JSON переменных'); return; }
+      const res = await fetch(`/prompts/${encodeURIComponent(name)}/render`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({variables, allow_missing: !!force})
+      }).then(r => r.json());
+      renderedEl.textContent = res.rendered || '';
+      // Mark missing
+      const missing = res.missing || [];
+      requiredEl.innerHTML = '';
+      const required = await fetch(`/prompts/${encodeURIComponent(name)}/vars`).then(r => r.json());
+      const requiredList = required.required || [];
+      requiredList.forEach(k => requiredEl.appendChild(pill(k, missing.includes(k))));
+      if (missing.length) {
+        varsEl.classList.add('missing');
+      } else {
+        varsEl.classList.remove('missing');
+      }
+      if (missing.length && !force) {
+        alert('Отсутствуют обязательные переменные: ' + missing.join(', '));
+      }
+    }
+
+    document.getElementById('loadBtn').onclick = () => { loadPrompt(); loadVars(); };
+    document.getElementById('saveBtn').onclick = savePrompt;
+    document.getElementById('renderBtn').onclick = () => renderPrompt(false);
+    document.getElementById('forceBtn').onclick = () => renderPrompt(true);
+
+    refreshList().then(async () => { await loadPrompt(); await loadVars(); });
+  </script>
+</body>
+</html>

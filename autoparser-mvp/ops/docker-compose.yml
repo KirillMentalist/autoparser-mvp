@@ -1,0 +1,42 @@
+version: "3.9"
+services:
+  api:
+    build: ..
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
+    working_dir: /app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - APP_ENV=${APP_ENV}
+      - LOG_LEVEL=${LOG_LEVEL}
+    volumes:
+      - ..:/app
+    ports: ["8000:8000"]
+    depends_on: [db, redis]
+  worker:
+    build: ..
+    command: celery -A apps.api.worker.app:celery_app worker -l info
+    working_dir: /app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=${REDIS_URL}
+    volumes:
+      - ..:/app
+    depends_on: [db, redis]
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+volumes:
+  pgdata: {}

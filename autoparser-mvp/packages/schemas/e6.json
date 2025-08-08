@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e6.json",
+  "type": "object",
+  "required": [
+    "msr_scrspe",
+    "msr_scrdif",
+    "msr_scrcom",
+    "msr_scrval"
+  ],
+  "properties": {
+    "msr_scrspe": {
+      "$ref": "#/defs/scr"
+    },
+    "msr_scrdif": {
+      "$ref": "#/defs/scr"
+    },
+    "msr_scrcom": {
+      "$ref": "#/defs/scr"
+    },
+    "msr_scrval": {
+      "$ref": "#/defs/scr"
+    }
+  },
+  "defs": {
+    "scr": {
+      "type": "object",
+      "required": [
+        "score",
+        "text"
+      ],
+      "properties": {
+        "score": {
+          "type": "string",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "N/A"
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

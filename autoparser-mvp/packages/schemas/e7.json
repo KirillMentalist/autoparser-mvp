@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e7.json",
+  "type": "object",
+  "required": [
+    "msr_insght",
+    "msr_exprsk"
+  ],
+  "properties": {
+    "msr_insght": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 3,
+      "maxItems": 5
+    },
+    "msr_exprsk": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 3,
+      "maxItems": 5
+    }
+  },
+  "additionalProperties": false
+}

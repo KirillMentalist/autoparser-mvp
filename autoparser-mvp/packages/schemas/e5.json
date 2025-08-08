@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e5.json",
+  "type": "object",
+  "required": [
+    "msr_tstage",
+    "msr_tindus",
+    "msr_tgoals",
+    "msr_tstats"
+  ],
+  "properties": {
+    "msr_tstage": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "msr_tindus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "msr_tgoals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "msr_tstats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

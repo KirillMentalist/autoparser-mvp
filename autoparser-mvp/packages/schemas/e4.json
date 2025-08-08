@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e4.json",
+  "type": "object",
+  "required": [
+    "msr_segmnt",
+    "msr_typeid"
+  ],
+  "properties": {
+    "msr_segmnt": {
+      "type": "string"
+    },
+    "msr_typeid": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

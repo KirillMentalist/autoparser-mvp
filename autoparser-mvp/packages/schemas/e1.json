@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e1.json",
+  "type": "object",
+  "required": [
+    "msr_flname",
+    "msr_shdesc",
+    "msr_prglvl",
+    "msr_geocde",
+    "msr_geonme",
+    "msr_agency",
+    "msr_srclnk",
+    "msr_chkdat"
+  ],
+  "properties": {
+    "msr_flname": {
+      "type": "string"
+    },
+    "msr_shdesc": {
+      "type": "string"
+    },
+    "msr_prglvl": {
+      "type": "string",
+      "enum": [
+        "FED",
+        "REG"
+      ]
+    },
+    "msr_geocde": {
+      "type": "string"
+    },
+    "msr_geonme": {
+      "type": "string"
+    },
+    "msr_agency": {
+      "type": "string"
+    },
+    "msr_srclnk": {
+      "type": "string"
+    },
+    "msr_chkdat": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

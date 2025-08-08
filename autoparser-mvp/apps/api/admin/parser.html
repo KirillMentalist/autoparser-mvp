@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parser Admin</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+    h1 { margin: 0 0 16px; }
+    .card { border: 1px solid #eee; border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=password] { padding: 6px 10px; min-width: 240px; }
+    button { padding: 6px 10px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #f3f3f3; margin-right: 6px; }
+    .status-running { color: #0a6; }
+    .status-done { color: #06a; }
+    .status-queued { color: #a60; }
+    .muted { color: #666; font-size: 12px; }
+    .link { color: #06c; cursor: pointer; text-decoration: underline; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 1100px){ .grid { grid-template-columns: 1fr; } }
+    pre { background: #fafafa; padding: 8px; border: 1px solid #eee; border-radius: 8px; max-height: 360px; overflow: auto; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+    .tabbtn { padding: 6px 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; cursor: pointer; }
+    .tabbtn.active { background: #eef5ff; border-color: #bcd; }
+    .hidden { display: none; }
+    .kv { display: grid; grid-template-columns: 220px 1fr; gap: 6px; }
+    .kv div { padding: 4px 0; }
+    .kv label { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Админка парсера</h1>
+
+  <div class="card">
+    <h3>Настройки</h3>
+    <div class="row">
+      <label>Gemini API Key (хранится локально):</label>
+      <input type="password" id="apikey" placeholder="Введите ключ" />
+      <button id="saveKey">Сохранить</button>
+      <span id="keyMask" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Запуск</h3>
+    <div class="row">
+      <label>Регион (код или название):</label>
+      <input type="text" id="region" placeholder="напр., 92 или 'Республика Татарстан'"/>
+      <button id="start">Старт</button>
+    </div>
+    <div class="muted">Список запусков обновляется автоматически каждые 3 сек.</div>
+  </div>
+
+  <div class="card">
+    <h3>Запуски</h3>
+    <table id="runsTable">
+      <thead><tr><th>ID</th><th>Регион</th><th>Статус</th><th>Начало</th><th>Конец</th><th>Прогресс</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Шаги запуска <span id="currentRunId" class="muted"></span></h3>
+      <table id="stepsTable">
+        <thead><tr><th>ID</th><th>Этап</th><th>Статус</th><th>Начало</th><th>Конец</th><th>Действия</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="tabs">
+        <button class="tabbtn active" data-tab="payload">Payload</button>
+        <button class="tabbtn" data-tab="snapshot">Snapshot</button>
+        <button class="tabbtn" data-tab="card">Карточка</button>
+      </div>
+      <div id="tab-payload">
+        <pre id="payloadView">(выберите шаг)</pre>
+      </div>
+      <div id="tab-snapshot" class="hidden">
+        <div class="row">
+          <button onclick="loadSnapshot('txt')">Показать TXT</button>
+          <button onclick="loadSnapshot('html')">Показать HTML</button>
+          <span class="muted">Работает для шага FETCH (где есть snapshot_id)</span>
+        </div>
+        <pre id="snapshotView">(выберите шаг FETCH)</pre>
+      </div>
+      <div id="tab-card" class="hidden">
+        <div class="row">
+          <button onclick="loadMeasures()">Обновить список карточек в запуске</button>
+        </div>
+        <div id="measuresList"></div>
+        <h4>Превью карточки</h4>
+        <div id="cardPreview" class="kv"></div>
+        <h4>JSON</h4>
+        <pre id="cardJSON"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Подсказки</h3>
+      <div class="kv">
+        <label>Payload шага:</label><div>Детализированный JSON каждого этапа.</div>
+        <label>Snapshot:</label><div>Сырые HTML/TXT страницы источника (для верификации).</div>
+        <label>Карточка:</label><div>Итоговая «Карточка Меры» (собранная по Э1–Э8).</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeTab = 'payload';
+    let currentRunId = null;
+    let currentStepId = null;
+
+    function switchTab(tab){
+      activeTab = tab;
+      document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+      document.getElementById('tab-payload').classList.toggle('hidden', tab!=='payload');
+      document.getElementById('tab-snapshot').classList.toggle('hidden', tab!=='snapshot');
+      document.getElementById('tab-card').classList.toggle('hidden', tab!=='card');
+    }
+    document.querySelectorAll('.tabbtn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+    async function fetchJSON(url, opts={}){
+      const r = await fetch(url, Object.assign({headers:{'Content-Type':'application/json'}}, opts));
+      if(!r.ok){ throw new Error(await r.text()); }
+      return r.json();
+    }
+
+    async function loadConfig(){
+      const cfg = await fetchJSON('/config');
+      document.getElementById('keyMask').textContent = 'Сохранён: ' + (cfg.gemini_api_key || '(нет)');
+    }
+
+    async function saveKey(){
+      const key = (document.getElementById('apikey').value || '').trim();
+      await fetchJSON('/config', {method:'POST', body: JSON.stringify({gemini_api_key: key})});
+      document.getElementById('apikey').value = '';
+      await loadConfig();
+      alert('Ключ сохранён');
+    }
+
+    async function start(){
+      const region = (document.getElementById('region').value || '').trim() || '92';
+      await fetchJSON('/parse/start', {method:'POST', body: JSON.stringify({region})});
+      await loadRuns();
+    }
+
+    let runsTimer = null;
+    async function loadRuns(){
+      const data = await fetchJSON('/runs');
+      const tb = document.querySelector('#runsTable tbody'); tb.innerHTML = '';
+      data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = \`
+          <td>\${r.id}</td>
+          <td>\${r.region}</td>
+          <td class="status-\${r.status}">\${r.status}</td>
+          <td>\${r.started_at || ''}</td>
+          <td>\${r.finished_at || ''}</td>
+          <td>\${r.processed || 0} / 12</td>
+          <td><span class="link" onclick="openRun(\${r.id})">Открыть</span></td>
+        \`;
+        tb.appendChild(tr);
+      });
+      if(!runsTimer){
+        runsTimer = setInterval(loadRuns, 3000);
+      }
+    }
+
+    async function openRun(id){
+      currentRunId = id;
+      document.getElementById('currentRunId').textContent = '#' + id;
+      await loadSteps(id);
+      await loadMeasures();
+    }
+
+    async function loadSteps(id){
+      const steps = await fetchJSON('/runs/' + id + '/steps');
+      const tb = document.querySelector('#stepsTable tbody'); tb.innerHTML = '';
+      steps.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = \`
+          <td>\${s.id}</td>
+          <td>\${s.stage}</td>
+          <td class="status-\${s.status}">\${s.status}</td>
+          <td>\${s.created_at || ''}</td>
+          <td>\${s.finished_at || ''}</td>
+          <td>
+            <span class="link" onclick="viewPayload(\${id}, \${s.id})">Просмотр</span>
+             | 
+            <a href="/runs/\${id}/steps/\${s.id}/download?fmt=json" target="_blank">JSON</a>
+             / 
+            <a href="/runs/\${id}/steps/\${s.id}/download?fmt=txt" target="_blank">TXT</a>
+          </td>
+        \`;
+        tb.appendChild(tr);
+      });
+    }
+
+    async function viewPayload(runId, stepId){
+      currentStepId = stepId;
+      const s = await fetchJSON('/runs/' + runId + '/steps/' + stepId);
+      document.getElementById('payloadView').textContent = JSON.stringify(s.payload || {}, null, 2);
+    }
+
+    async function loadSnapshot(kind){
+      if(!currentRunId || !currentStepId){ alert('Сначала выберите шаг FETCH'); return; }
+      const res = await fetch('/runs/' + currentRunId + '/steps/' + currentStepId + '/snapshot?kind=' + kind);
+      if(!res.ok){ document.getElementById('snapshotView').textContent = 'Не удалось загрузить снапшот'; return; }
+      const txt = await res.text();
+      document.getElementById('snapshotView').textContent = txt;
+    }
+
+    async function loadMeasures(){
+      if(!currentRunId){ return; }
+      const data = await fetchJSON('/runs/' + currentRunId + '/measures');
+      const list = document.getElementById('measuresList'); list.innerHTML='';
+      (data.items || []).forEach(m => {
+        const div = document.createElement('div');
+        div.innerHTML = \`
+          <span class="pill">\${m.msr_intlid}</span>
+          <span class="muted">[\${m.region_code} · \${m.prglvl} · \${m.segmnt}/\${m.typeid}]</span>
+          <span class="link" onclick="previewCard('\${m.msr_intlid}')">Превью</span>
+           | 
+          <a href="/measures/\${m.msr_intlid}" target="_blank">JSON</a>
+        \`;
+        list.appendChild(div);
+      });
+    }
+
+    function kvRow(label, value){
+      const row = document.createElement('div');
+      row.className = 'kv';
+      const l = document.createElement('label');
+      l.textContent = label;
+      const v = document.createElement('div');
+      v.textContent = value || '';
+      row.appendChild(l); row.appendChild(v);
+      return row;
+    }
+
+    async function previewCard(msrId){
+      const data = await fetchJSON('/measures/' + encodeURIComponent(msrId));
+      const card = data.card || {};
+      const cont = document.getElementById('cardPreview');
+      cont.innerHTML = '';
+      const fields = [
+        ['ID', data.msr_intlid],
+        ['Название', card.msr_flname],
+        ['Краткое описание', card.msr_shdesc],
+        ['Уровень', card.msr_prglvl],
+        ['География', (card.msr_geocde || '') + ' / ' + (card.msr_geonme || '')],
+        ['Агентство', card.msr_agency],
+        ['Источник', card.msr_srclnk],
+        ['Последняя проверка', card.msr_chkdat],
+        ['Сегмент', card.msr_segmnt],
+        ['Тип', card.msr_typeid],
+        ['Сумма поддержки', card.msr_amount],
+        ['Фин. затраты', card.msr_fncost],
+        ['Доп. затраты', card.msr_adcost],
+        ['Первый шаг', card.msr_frstep]
+      ];
+      fields.forEach(([k,v]) => cont.appendChild(kvRow(k, v)));
+      document.getElementById('cardJSON').textContent = JSON.stringify(card, null, 2);
+      switchTab('card');
+    }
+
+    document.getElementById('saveKey').onclick = saveKey;
+    document.getElementById('start').onclick = start;
+
+    loadConfig();
+    loadRuns();
+  </script>
+</body>
+</html>

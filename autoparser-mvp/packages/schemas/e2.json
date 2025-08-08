@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e2.json",
+  "type": "object",
+  "required": [
+    "msr_amount",
+    "msr_fncost",
+    "msr_adcost",
+    "msr_reqtxt"
+  ],
+  "properties": {
+    "msr_amount": {
+      "type": "string"
+    },
+    "msr_fncost": {
+      "type": "string"
+    },
+    "msr_adcost": {
+      "type": "string"
+    },
+    "msr_reqtxt": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/measure_e3.json",
+  "type": "object",
+  "required": [
+    "msr_dedlin",
+    "msr_duratn",
+    "msr_frstep",
+    "msr_report",
+    "msr_contct"
+  ],
+  "properties": {
+    "msr_dedlin": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "msr_duratn": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "msr_frstep": {
+      "type": "string"
+    },
+    "msr_report": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "msr_contct": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,30 @@
+{
+  "E1_Passport": [
+    "msr_geocde",
+    "msr_geonme",
+    "msr_prglvl",
+    "msr_srclnk",
+    "TODAY",
+    "SOURCE_TEXT"
+  ],
+  "E2_Finance_Legal": [
+    "SOURCE_TEXT"
+  ],
+  "E3_Operations": [
+    "SOURCE_TEXT"
+  ],
+  "E4_DNA": [
+    "SOURCE_TEXT"
+  ],
+  "E5_Applicant_Profile": [
+    "SOURCE_TEXT"
+  ],
+  "E6_Scoring": [],
+  "E7_Strategic_Insights": [],
+  "E8_ID_Build": [
+    "msr_geocde",
+    "msr_prglvl",
+    "msr_segmnt",
+    "msr_typeid"
+  ]
+}
