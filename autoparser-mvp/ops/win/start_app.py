@@ -11,7 +11,7 @@ def _set_playwright_path():
         base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
         mp = os.path.join(base, "ms-playwright")
         if not os.path.isdir(mp):
-            # Fallback: try one level up
+            # Fallback: one level up
             mp2 = os.path.join(os.path.dirname(base), "ms-playwright")
             if os.path.isdir(mp2):
                 mp = mp2
@@ -29,4 +29,5 @@ if __name__ == "__main__":
     t.start()
     time.sleep(1.5)
     webbrowser.open("http://127.0.0.1:8000/admin/parser.html")
+    t.join()
     t.join()

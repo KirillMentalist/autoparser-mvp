@@ -1,0 +1,73 @@
+name: Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install Playwright browsers (bundled locally)
+        shell: bash
+        run: |
+          export PLAYWRIGHT_BROWSERS_PATH="$GITHUB_WORKSPACE/ms-playwright"
+          python -m playwright install chromium
+
+      - name: PyInstaller build
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          pyinstaller --noconsole --name Autoparser ops/win/start_app.py `
+            --add-data "apps/api/admin;apps/api/admin" `
+            --add-data "prompts;prompts" `
+            --add-data "packages/schemas;packages/schemas"
+          if (Test-Path .\ms-playwright) {
+            New-Item -ItemType Directory -Force -Path .\dist\Autoparser\ms-playwright | Out-Null
+            Copy-Item -Path .\ms-playwright\* -Destination .\dist\Autoparser\ms-playwright -Recurse -Force
+          }
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+
+      - name: Build Installer (.exe)
+        run: |
+          iscc.exe ops\win\autoparser.iss /DMyAppName="Autoparser"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Autoparser-Windows
+          path: |
+            dist\Autoparser\Autoparser.exe
+            Output\Autoparser-Setup.exe
+
+      # Publish Release when building from a tag vX.Y.Z
+      - name: Create GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Autoparser ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            Output/Autoparser-Setup.exe
+            dist/Autoparser/Autoparser.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,7 +10,7 @@ from packages.agents.prompt_loader import (
 )
 from packages.persistence.db import SessionLocal, init_db
 from packages.persistence.models import Run, Step, Measure, Snapshot as DBSnapshot
-from apps.api.worker.app import run_parser as celery_run_parser
+from apps.api.runner import run_parser
 
 CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../config/config.json"))
 
@@ -71,8 +71,8 @@ def post_config(body: ConfigRequest):
 @app.post("/parse/start")
 def start_parse(req: RunRequest):
     init_db()
-    task = celery_run_parser.delay(req.region)
-    return {"status": "queued", "task_id": task.id}
+    result = run_parser(req.region)
+    return result
 
 @app.get("/runs", response_model=List[dict])
 def list_runs():
